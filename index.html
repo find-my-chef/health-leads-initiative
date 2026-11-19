@@ -51,6 +51,10 @@ nav a:hover,nav button:hover,nav .on{color:var(--em);border-color:var(--bright)}
 form label{display:block;font-weight:700;margin:16px 0 6px}form input,form select,form textarea{width:100%;font:inherit;padding:12px 14px;border:1.5px solid #b7c4bc;border-radius:4px;background:#fff;color:var(--tx)}
 .er{color:#b3261e;font-size:14px;font-weight:600;min-height:0;margin:4px 0 0}.ok{background:var(--pale);padding:16px;border-left:4px solid var(--em);margin-top:16px}
 .hp{position:absolute;left:-9999px}
+.btn.busy{display:inline-flex;align-items:center;gap:8px;opacity:.85;cursor:progress}
+.spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:hli-spin .7s linear infinite}
+@keyframes hli-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin{animation:none}}
 .prog{padding:clamp(40px,6vw,80px) 0;border-top:1px solid var(--bd)}
 footer{border-top:1px solid var(--bd);padding:64px 0 28px}footer .g4{grid-template-columns:2fr 1fr 1fr 1.4fr}@media(max-width:900px){footer .g4{grid-template-columns:1fr 1fr}}@media(max-width:640px){footer .g4{grid-template-columns:1fr}}
 footer a{display:block;color:var(--tx);text-decoration:none;margin:6px 0}footer a:hover{color:var(--em)}footer h4{margin:0 0 8px;font-size:15px;color:var(--em)}.sm{color:var(--mu);font-size:14px}
@@ -111,7 +115,7 @@ main[data-p]{display:none}main.act{display:block}
 <label for="o">Organisation (optional)</label><input id="o">
 <label for="s">Subject</label><select id="s"><option>General Enquiry<option>Partnership Opportunity<option>Volunteering<option>Project Enquiry<option>Media Enquiry<option>Other</select>
 <label for="m">Message</label><textarea id="m" rows="6" aria-describedby="m-e"></textarea><p class="er" id="m-e"></p>
-<input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true"><div style="margin-top:20px"><button class="btn" type="submit">Send Message</button></div><div id="fm" role="status" aria-live="polite"></div></form></div></section>
+<input class="hp" id="leaveblank" name="leaveblank" tabindex="-1" autocomplete="off" aria-hidden="true"><div style="margin-top:20px"><button class="btn" type="submit">Send Message</button></div><div id="fm" role="status" aria-live="polite"></div></form></div></section>
 </main>
 
 <footer><div class="w"><div class="g4"><div><img data-i="logo" alt="Health Leads Initiative logo" style="height:64px;border-radius:4px;margin-bottom:14px"><p class="sm" style="max-width:340px">An African nonprofit established in January 2019 to increase healthcare accessibility for underserved populations.</p></div>
@@ -156,15 +160,15 @@ $('#ab').onclick=()=>tog();
 let done=false;function count(){const els=$$('.num');const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;if(rm||!('IntersectionObserver' in window))return;
 const io=new IntersectionObserver(es=>es.forEach(en=>{if(!en.isIntersecting)return;io.disconnect();const el=en.target,t=+el.dataset.t,f=el.dataset.f,s=performance.now();(function st(n){const p=Math.min((n-s)/1400,1),v=Math.round(t*(1-Math.pow(1-p,3)));el.textContent=p<1?v.toLocaleString():f;if(p<1)requestAnimationFrame(st)})(s)}),{threshold:.6});els.forEach(e=>io.observe(e))}
 // form
-const F=$('#f');F.onsubmit=async e=>{e.preventDefault();const v=id=>{const el=$('#'+id);return el&&typeof el.value==='string'?el.value.trim():''},er=(id,t)=>{$('#'+id+'-e').textContent=t;$('#'+{n:'n',e:'e',m:'m'}[id]).setAttribute('aria-invalid',!!t);return!t};
+const F=$('#f');let sending=false;F.onsubmit=async e=>{e.preventDefault();if(sending)return;const v=id=>{const el=$('#'+id);return el&&typeof el.value==='string'?el.value.trim():''},er=(id,t)=>{$('#'+id+'-e').textContent=t;$('#'+{n:'n',e:'e',m:'m'}[id]).setAttribute('aria-invalid',!!t);return!t};
 let ok=[er('n',v('n')?'':'Please enter your name.'),er('e',/^\S+@\S+\.\S+$/.test(v('e'))?'':'Please enter a valid email address.'),er('m',v('m').length>9?'':'Please enter a message of at least 10 characters.')].every(Boolean);
-if(!ok||v('website'))return;
-const btn=F.querySelector('button');btn.disabled=true;$('#fm').innerHTML='';
-try{const res=await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('n'),email:v('e'),organisation:v('o'),subject:$('#s').value,message:v('m'),company:v('website')})});
+if(!ok||v('leaveblank'))return;
+const btn=F.querySelector('button'),label=btn.textContent;sending=true;btn.disabled=true;btn.classList.add('busy');btn.setAttribute('aria-busy','true');btn.innerHTML='<span class="spin" aria-hidden="true"></span>Sending…';$('#fm').innerHTML='';
+try{const res=await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('n'),email:v('e'),organisation:v('o'),subject:$('#s').value,message:v('m'),company:v('leaveblank')})});
 const data=await res.json().catch(()=>({}));
 if(!res.ok)throw new Error(data.error||'send failed');
-F.reset();$('#fm').innerHTML='<div class="ok">Thank you. Your message has been sent to hello@healthleadsinitiative.com.</div>';
+F.reset();$('#fm').innerHTML='<div class="ok">Thank you. Your message has been sent to hello@healthleadsinitiative.com. You can send another message below.</div>';
 }catch(err){$('#fm').innerHTML='<div class="er">'+(err.message&&err.message!=='send failed'?err.message:'We could not send your message just now.')+' Please email us directly at <a href="mailto:hello@healthleadsinitiative.com">hello@healthleadsinitiative.com</a>.</div>';
-}finally{btn.disabled=false;}};
+}finally{sending=false;btn.disabled=false;btn.classList.remove('busy');btn.removeAttribute('aria-busy');btn.textContent=label;}};
 route();
 </script></body></html>
