@@ -111,7 +111,7 @@ main[data-p]{display:none}main.act{display:block}
 <label for="o">Organisation (optional)</label><input id="o">
 <label for="s">Subject</label><select id="s"><option>General Enquiry<option>Partnership Opportunity<option>Volunteering<option>Project Enquiry<option>Media Enquiry<option>Other</select>
 <label for="m">Message</label><textarea id="m" rows="6" aria-describedby="m-e"></textarea><p class="er" id="m-e"></p>
-<input class="hp" id="hp" tabindex="-1" autocomplete="off" aria-hidden="true"><div style="margin-top:20px"><button class="btn" type="submit">Send Message</button></div><div id="fm" role="status" aria-live="polite"></div></form></div></section>
+<input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true"><div style="margin-top:20px"><button class="btn" type="submit">Send Message</button></div><div id="fm" role="status" aria-live="polite"></div></form></div></section>
 </main>
 
 <footer><div class="w"><div class="g4"><div><img data-i="logo" alt="Health Leads Initiative logo" style="height:64px;border-radius:4px;margin-bottom:14px"><p class="sm" style="max-width:340px">An African nonprofit established in January 2019 to increase healthcare accessibility for underserved populations.</p></div>
@@ -156,11 +156,15 @@ $('#ab').onclick=()=>tog();
 let done=false;function count(){const els=$$('.num');const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;if(rm||!('IntersectionObserver' in window))return;
 const io=new IntersectionObserver(es=>es.forEach(en=>{if(!en.isIntersecting)return;io.disconnect();const el=en.target,t=+el.dataset.t,f=el.dataset.f,s=performance.now();(function st(n){const p=Math.min((n-s)/1400,1),v=Math.round(t*(1-Math.pow(1-p,3)));el.textContent=p<1?v.toLocaleString():f;if(p<1)requestAnimationFrame(st)})(s)}),{threshold:.6});els.forEach(e=>io.observe(e))}
 // form
-const F=$('#f');F.onsubmit=e=>{e.preventDefault();const v=id=>$('#'+id).value.trim(),er=(id,t)=>{$('#'+id+'-e').textContent=t;$('#'+{n:'n',e:'e',m:'m'}[id]).setAttribute('aria-invalid',!!t);return!t};
+const F=$('#f');F.onsubmit=async e=>{e.preventDefault();const v=id=>{const el=$('#'+id);return el&&typeof el.value==='string'?el.value.trim():''},er=(id,t)=>{$('#'+id+'-e').textContent=t;$('#'+{n:'n',e:'e',m:'m'}[id]).setAttribute('aria-invalid',!!t);return!t};
 let ok=[er('n',v('n')?'':'Please enter your name.'),er('e',/^\S+@\S+\.\S+$/.test(v('e'))?'':'Please enter a valid email address.'),er('m',v('m').length>9?'':'Please enter a message of at least 10 characters.')].every(Boolean);
-if(!ok||v('hp'))return;
-const body=`Name: ${v('n')}\nEmail: ${v('e')}\nOrganisation: ${v('o')||'-'}\n\n${v('m')}`;
-$('#fm').innerHTML='<div class="ok">Your email app should now open with your message ready to send to hello@healthleadsinitiative.com. If it does not, please email us directly at that address.</div>';
-location.href=`mailto:hello@healthleadsinitiative.com?subject=${encodeURIComponent($('#s').value)}&body=${encodeURIComponent(body)}`};
+if(!ok||v('website'))return;
+const btn=F.querySelector('button');btn.disabled=true;$('#fm').innerHTML='';
+try{const res=await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('n'),email:v('e'),organisation:v('o'),subject:$('#s').value,message:v('m'),company:v('website')})});
+const data=await res.json().catch(()=>({}));
+if(!res.ok)throw new Error(data.error||'send failed');
+F.reset();$('#fm').innerHTML='<div class="ok">Thank you. Your message has been sent to hello@healthleadsinitiative.com.</div>';
+}catch(err){$('#fm').innerHTML='<div class="er">'+(err.message&&err.message!=='send failed'?err.message:'We could not send your message just now.')+' Please email us directly at <a href="mailto:hello@healthleadsinitiative.com">hello@healthleadsinitiative.com</a>.</div>';
+}finally{btn.disabled=false;}};
 route();
 </script></body></html>
