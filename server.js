@@ -17,6 +17,7 @@ const SUBJECTS = new Set([
 
 const hits = new Map();
 
+
 function configured() {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
